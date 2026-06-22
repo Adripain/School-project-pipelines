@@ -74,10 +74,17 @@ echo "Les controles simples sont valides."
             steps {
                 echo 'Deploy: synchronisation et lancement sur le serveur VPN.'
                 script {
-                    ['DEPLOY_HOST', 'DEPLOY_USER', 'DEPLOY_PATH', 'SSH_CREDENTIALS_ID'].each { variableName ->
-                        if (!env[variableName]?.trim()) {
-                            error "Variable Jenkins ${variableName} manquante"
-                        }
+                    if (env.DEPLOY_HOST == null || env.DEPLOY_HOST.trim() == '') {
+                        error 'Variable Jenkins DEPLOY_HOST manquante'
+                    }
+                    if (env.DEPLOY_USER == null || env.DEPLOY_USER.trim() == '') {
+                        error 'Variable Jenkins DEPLOY_USER manquante'
+                    }
+                    if (env.DEPLOY_PATH == null || env.DEPLOY_PATH.trim() == '') {
+                        error 'Variable Jenkins DEPLOY_PATH manquante'
+                    }
+                    if (env.SSH_CREDENTIALS_ID == null || env.SSH_CREDENTIALS_ID.trim() == '') {
+                        error 'Variable Jenkins SSH_CREDENTIALS_ID manquante'
                     }
                 }
                 sshagent(credentials: [env.SSH_CREDENTIALS_ID]) {
