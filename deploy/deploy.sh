@@ -16,6 +16,7 @@ require_var() {
 require_var "DEPLOY_PATH"
 
 APP_PORT="${APP_PORT:-8085}"
+CONTAINER_NAME="${CONTAINER_NAME:-tp-devops-landing}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_SOURCE="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
@@ -79,6 +80,14 @@ chmod +x "deploy/deploy.sh"
 
 log "Verification du reseau Docker externe devops"
 docker network inspect devops >/dev/null 2>&1 || docker network create devops
+
+existing_container_id="$(docker ps -aq --filter "name=^/${CONTAINER_NAME}$" | head -n 1)"
+compose_container_id="$(docker compose ps -q tp-devops-landing 2>/dev/null | head -n 1 || true)"
+
+if [[ -n "${existing_container_id}" && "${existing_container_id}" != "${compose_container_id}" ]]; then
+  log "Suppression du conteneur en conflit: ${CONTAINER_NAME}"
+  docker rm -f "${CONTAINER_NAME}"
+fi
 
 log "Construction et demarrage du conteneur"
 docker compose up -d --build
