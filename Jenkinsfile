@@ -87,7 +87,13 @@ echo "Les controles simples sont valides."
                         error 'Variable Jenkins SSH_CREDENTIALS_ID manquante'
                     }
                 }
-                sshagent(credentials: [env.SSH_CREDENTIALS_ID]) {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: env.SSH_CREDENTIALS_ID,
+                        keyFileVariable: 'SSH_KEY_FILE',
+                        usernameVariable: 'SSH_CREDENTIAL_USER'
+                    )
+                ]) {
                     sh '''#!/usr/bin/env bash
 set -euo pipefail
 
@@ -95,9 +101,10 @@ set -euo pipefail
 : "${DEPLOY_USER:?Variable Jenkins DEPLOY_USER manquante}"
 : "${DEPLOY_PATH:?Variable Jenkins DEPLOY_PATH manquante}"
 : "${SSH_CREDENTIALS_ID:?Variable Jenkins SSH_CREDENTIALS_ID manquante}"
+: "${SSH_KEY_FILE:?Cle SSH Jenkins introuvable}"
 
 remote="${DEPLOY_USER}@${DEPLOY_HOST}"
-ssh_options="-o StrictHostKeyChecking=accept-new"
+ssh_options="-i ${SSH_KEY_FILE} -o StrictHostKeyChecking=accept-new"
 
 echo "Creation du dossier distant si necessaire: ${DEPLOY_PATH}"
 ssh ${ssh_options} "${remote}" "mkdir -p '${DEPLOY_PATH}'"

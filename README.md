@@ -28,7 +28,6 @@ Le projet evite volontairement la sur-ingenierie : pas de framework, pas de base
 - Docker
 - Docker Compose v2
 - Jenkins
-- Plugin Jenkins SSH Agent
 - rsync sur l'agent Jenkins et sur le serveur VPN
 - Acces SSH au serveur VPN
 - Un repository GitHub pour le projet
