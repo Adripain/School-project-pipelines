@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Landing page statique dockerisee pour un TP DevOps avec Jenkins, Docker et Nginx."
+    />
+    <title>TP DevOps - Landing Page</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="navbar" aria-label="Navigation principale">
+        <a class="brand" href="#top" aria-label="Accueil TP DevOps">
+          <span class="brand-mark" aria-hidden="true">D</span>
+          <span>TP DevOps</span>
+        </a>
+        <button class="theme-toggle" type="button" aria-label="Changer le theme">
+          Mode sombre
+        </button>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-content">
+          <p class="eyebrow">Pipeline CI/CD Jenkins</p>
+          <h1>TP DevOps - Landing Page</h1>
+          <p class="hero-description">
+            Ce site statique est construit dans une image Docker, servi par
+            Nginx et deploye automatiquement sur un serveur VPN via Jenkins.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#technologies">Voir les technologies</a>
+            <a class="button secondary" href="#pipeline">Comprendre le flux</a>
+          </div>
+        </div>
+
+        <div class="pipeline-panel" aria-label="Schema simplifie de pipeline">
+          <div class="pipeline-step">
+            <span class="step-number">01</span>
+            <strong>GitHub</strong>
+            <small>Webhook</small>
+          </div>
+          <div class="pipeline-line" aria-hidden="true"></div>
+          <div class="pipeline-step">
+            <span class="step-number">02</span>
+            <strong>Jenkins</strong>
+            <small>Build & tests</small>
+          </div>
+          <div class="pipeline-line" aria-hidden="true"></div>
+          <div class="pipeline-step">
+            <span class="step-number">03</span>
+            <strong>VPN</strong>
+            <small>Deploy Docker</small>
+          </div>
+        </div>
+      </section>
+
+      <section id="technologies" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Stack technique</p>
+          <h2>Technologies utilisees</h2>
+        </div>
+
+        <div class="tech-grid">
+          <article class="tech-card">
+            <span class="tech-icon" aria-hidden="true">GH</span>
+            <h3>GitHub</h3>
+            <p>Stockage du code source et declenchement automatique via webhook.</p>
+          </article>
+          <article class="tech-card">
+            <span class="tech-icon" aria-hidden="true">CI</span>
+            <h3>Jenkins</h3>
+            <p>Pipeline de validation, build, test et deploiement continu.</p>
+          </article>
+          <article class="tech-card">
+            <span class="tech-icon" aria-hidden="true">DK</span>
+            <h3>Docker</h3>
+            <p>Image reproductible pour livrer la meme version partout.</p>
+          </article>
+          <article class="tech-card">
+            <span class="tech-icon" aria-hidden="true">NX</span>
+            <h3>Nginx</h3>
+            <p>Serveur web leger pour exposer les fichiers statiques.</p>
+          </article>
+          <article class="tech-card">
+            <span class="tech-icon" aria-hidden="true">VPN</span>
+            <h3>VPN</h3>
+            <p>Serveur personnel utilise comme environnement de deploiement.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="pipeline" class="section split-section">
+        <div>
+          <p class="eyebrow">De GitHub au serveur</p>
+          <h2>Un deploiement simple et lisible</h2>
+        </div>
+        <ol class="check-list">
+          <li>Verification des fichiers essentiels du projet.</li>
+          <li>Construction de l'image Docker avec Docker Compose.</li>
+          <li>Controle rapide du contenu HTML attendu.</li>
+          <li>Synchronisation des fichiers vers le serveur VPN.</li>
+          <li>Redemarrage controle du conteneur dedie au projet.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; <span id="current-year"></span> TP DevOps - Landing Page</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

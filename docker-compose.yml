@@ -1,0 +1,16 @@
+services:
+  tp-devops-landing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tp-devops-landing:latest
+    container_name: tp-devops-landing
+    ports:
+      - "${APP_PORT:-8085}:80"
+    restart: unless-stopped
+    networks:
+      - devops
+
+networks:
+  devops:
+    external: true
