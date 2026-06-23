@@ -41,11 +41,27 @@ echo "Tous les fichiers obligatoires sont presents."
 
         stage('Build') {
             steps {
-                echo 'Build: construction de l image Docker avec Docker Compose.'
+                echo 'Build: construction de l image Docker.'
+                script {
+                    if (env.DOCKERHUB_IMAGE == null || env.DOCKERHUB_IMAGE.trim() == '') {
+                        error 'Variable Jenkins DOCKERHUB_IMAGE manquante'
+                    }
+                }
                 sh '''#!/usr/bin/env bash
 set -euo pipefail
 
-docker compose build
+: "${DOCKERHUB_IMAGE:?Variable Jenkins DOCKERHUB_IMAGE manquante}"
+: "${BUILD_NUMBER:?Variable Jenkins BUILD_NUMBER manquante}"
+
+if [[ "${DOCKERHUB_IMAGE}" == *:* ]]; then
+  echo "DOCKERHUB_IMAGE ne doit pas contenir de tag. Exemple: your-dockerhub-user/tp-devops-landing"
+  exit 1
+fi
+
+docker build \
+  -t "${DOCKERHUB_IMAGE}:${BUILD_NUMBER}" \
+  -t "${DOCKERHUB_IMAGE}:latest" \
+  .
 '''
             }
         }
@@ -58,9 +74,48 @@ set -euo pipefail
 
 grep -Fq "TP DevOps - Landing Page" index.html
 docker compose config >/dev/null
+docker image inspect "${DOCKERHUB_IMAGE}:${BUILD_NUMBER}" >/dev/null
 
 echo "Les controles simples sont valides."
 '''
+            }
+        }
+
+        stage('Push DockerHub') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'main' }
+                }
+            }
+            steps {
+                echo 'Push DockerHub: publication de l image Docker.'
+                script {
+                    if (env.DOCKERHUB_CREDENTIALS_ID == null || env.DOCKERHUB_CREDENTIALS_ID.trim() == '') {
+                        error 'Variable Jenkins DOCKERHUB_CREDENTIALS_ID manquante'
+                    }
+                }
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: env.DOCKERHUB_CREDENTIALS_ID,
+                        usernameVariable: 'DOCKERHUB_USERNAME',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    sh '''#!/usr/bin/env bash
+set -euo pipefail
+
+: "${DOCKERHUB_IMAGE:?Variable Jenkins DOCKERHUB_IMAGE manquante}"
+: "${BUILD_NUMBER:?Variable Jenkins BUILD_NUMBER manquante}"
+: "${DOCKERHUB_USERNAME:?Identifiant DockerHub Jenkins introuvable}"
+: "${DOCKERHUB_TOKEN:?Token DockerHub Jenkins introuvable}"
+
+echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+docker push "${DOCKERHUB_IMAGE}:${BUILD_NUMBER}"
+docker push "${DOCKERHUB_IMAGE}:latest"
+docker logout
+'''
+                }
             }
         }
 
@@ -86,6 +141,9 @@ echo "Les controles simples sont valides."
                     if (env.SSH_CREDENTIALS_ID == null || env.SSH_CREDENTIALS_ID.trim() == '') {
                         error 'Variable Jenkins SSH_CREDENTIALS_ID manquante'
                     }
+                    if (env.DOCKERHUB_IMAGE == null || env.DOCKERHUB_IMAGE.trim() == '') {
+                        error 'Variable Jenkins DOCKERHUB_IMAGE manquante'
+                    }
                 }
                 withCredentials([
                     sshUserPrivateKey(
@@ -101,10 +159,13 @@ set -euo pipefail
 : "${DEPLOY_USER:?Variable Jenkins DEPLOY_USER manquante}"
 : "${DEPLOY_PATH:?Variable Jenkins DEPLOY_PATH manquante}"
 : "${SSH_CREDENTIALS_ID:?Variable Jenkins SSH_CREDENTIALS_ID manquante}"
+: "${DOCKERHUB_IMAGE:?Variable Jenkins DOCKERHUB_IMAGE manquante}"
+: "${BUILD_NUMBER:?Variable Jenkins BUILD_NUMBER manquante}"
 : "${SSH_KEY_FILE:?Cle SSH Jenkins introuvable}"
 
 remote="${DEPLOY_USER}@${DEPLOY_HOST}"
 ssh_options="-i ${SSH_KEY_FILE} -o StrictHostKeyChecking=accept-new"
+docker_image="${DOCKERHUB_IMAGE}:${BUILD_NUMBER}"
 
 echo "Creation du dossier distant si necessaire: ${DEPLOY_PATH}"
 ssh ${ssh_options} "${remote}" "mkdir -p '${DEPLOY_PATH}'"
@@ -118,7 +179,7 @@ rsync -az --delete \
   ./ "${remote}:${DEPLOY_PATH}/"
 
 echo "Execution du script de deploiement distant."
-ssh ${ssh_options} "${remote}" "cd '${DEPLOY_PATH}' && chmod +x deploy/deploy.sh && DEPLOY_PATH='${DEPLOY_PATH}' ./deploy/deploy.sh"
+ssh ${ssh_options} "${remote}" "cd '${DEPLOY_PATH}' && chmod +x deploy/deploy.sh && DEPLOY_PATH='${DEPLOY_PATH}' DOCKER_IMAGE='${docker_image}' ./deploy/deploy.sh"
 '''
                 }
             }

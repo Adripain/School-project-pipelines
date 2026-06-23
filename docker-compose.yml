@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: tp-devops-landing:latest
+    image: ${DOCKER_IMAGE:-tp-devops-landing:latest}
     container_name: tp-devops-landing
     ports:
       - "${APP_PORT:-8085}:80"

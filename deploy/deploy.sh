@@ -17,8 +17,27 @@ require_var "DEPLOY_PATH"
 
 APP_PORT="${APP_PORT:-8085}"
 CONTAINER_NAME="${CONTAINER_NAME:-tp-devops-landing}"
+DOCKER_IMAGE="${DOCKER_IMAGE:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_SOURCE="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+set_env_var() {
+  local key="$1"
+  local value="$2"
+  local tmp_file
+
+  if grep -q "^${key}=" ".env"; then
+    tmp_file="$(mktemp)"
+    awk -v key="${key}" -v value="${value}" '
+      BEGIN { prefix = key "=" }
+      index($0, prefix) == 1 { $0 = key "=" value }
+      { print }
+    ' ".env" > "${tmp_file}"
+    mv "${tmp_file}" ".env"
+  else
+    printf '\n%s=%s\n' "${key}" "${value}" >> ".env"
+  fi
+}
 
 required_files=(
   "index.html"
@@ -76,6 +95,11 @@ if ! grep -q '^APP_PORT=' ".env"; then
   printf '\nAPP_PORT=%s\n' "${APP_PORT}" >> ".env"
 fi
 
+if [[ -n "${DOCKER_IMAGE}" ]]; then
+  log "Configuration de l'image Docker: ${DOCKER_IMAGE}"
+  set_env_var "DOCKER_IMAGE" "${DOCKER_IMAGE}"
+fi
+
 chmod +x "deploy/deploy.sh"
 
 log "Verification du reseau Docker externe devops"
@@ -89,8 +113,16 @@ if [[ -n "${existing_container_id}" && "${existing_container_id}" != "${compose_
   docker rm -f "${CONTAINER_NAME}"
 fi
 
-log "Construction et demarrage du conteneur"
-docker compose up -d --build
+if [[ -n "${DOCKER_IMAGE}" ]]; then
+  log "Pull de l'image publiee: ${DOCKER_IMAGE}"
+  docker compose pull
+
+  log "Demarrage du conteneur depuis l'image publiee"
+  docker compose up -d
+else
+  log "Construction locale et demarrage du conteneur"
+  docker compose up -d --build
+fi
 
 log "Statut final"
 docker compose ps

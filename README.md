@@ -1,8 +1,10 @@
 # TP DevOps - Landing Page
 
-Landing page statique simple pour un TP DevOps. Le site est ecrit en HTML, CSS et JavaScript vanilla, servi par Nginx dans Docker, puis deploye sur un serveur VPN avec Jenkins et Docker Compose.
+Landing page statique simple pour un TP DevOps. Le site est ecrit en HTML, CSS et JavaScript vanilla, servi par Nginx dans Docker, publie sur DockerHub, puis deploye sur un serveur VPN avec Jenkins et Docker Compose.
 
 Le projet evite volontairement la sur-ingenierie : pas de framework, pas de base de donnees, pas de dependance front-end.
+
+Pour la consigne Azure, la VM Ubuntu Azure est remplacee par un VPS Ubuntu personnel faute de credits Azure disponibles. Les etapes techniques restent equivalentes : serveur Linux, port applicatif ouvert, Docker, Docker Compose, Jenkins, image DockerHub et deploiement automatise.
 
 ## Arborescence
 
@@ -27,6 +29,7 @@ Le projet evite volontairement la sur-ingenierie : pas de framework, pas de base
 - Git
 - Docker
 - Docker Compose v2
+- Compte DockerHub
 - Jenkins
 - rsync sur l'agent Jenkins et sur le serveur VPN
 - Acces SSH au serveur VPN
@@ -90,6 +93,7 @@ Le fichier `.env.example` contient les valeurs d'exemple :
 
 ```env
 APP_PORT=8085
+DOCKER_IMAGE=your-dockerhub-user/tp-devops-landing:latest
 DEPLOY_PATH=/opt/tp-devops-landing
 DEPLOY_HOST=CHANGE_ME
 DEPLOY_USER=CHANGE_ME
@@ -103,28 +107,66 @@ cp .env.example .env
 
 Le fichier `.env` ne doit pas etre versionne.
 
+Si le port `80` est disponible sur le serveur, il est possible de modifier `APP_PORT` :
+
+```env
+APP_PORT=80
+```
+
+Si un autre service utilise deja le port `80`, conserver un port dedie comme `8085`.
+
+## DockerHub
+
+La pipeline construit deux tags :
+
+```text
+DOCKERHUB_IMAGE:BUILD_NUMBER
+DOCKERHUB_IMAGE:latest
+```
+
+Exemple de valeur Jenkins pour l'image :
+
+```text
+DOCKERHUB_IMAGE=your-dockerhub-user/tp-devops-landing
+```
+
+Dans Jenkins, creer aussi un credential DockerHub de type `Username with password`.
+
+Valeurs conseillees :
+
+```text
+ID: dockerhub-credentials
+Username: votre identifiant DockerHub
+Password: un access token DockerHub
+```
+
+Il est preferable d'utiliser un token DockerHub plutot que le mot de passe du compte.
+
 ## Mise en place Jenkins
 
 1. Creer un nouveau job Jenkins de type `Pipeline`.
 2. Configurer le job pour recuperer le repository GitHub.
 3. Utiliser le `Jenkinsfile` present dans le repository.
-4. Ajouter des credentials SSH dans Jenkins, par exemple avec l'identifiant `vpn-ssh-key`.
-5. Definir les variables Jenkins suivantes :
+4. Ajouter des credentials SSH dans Jenkins, par exemple avec l'identifiant `vpn-local-ssh`.
+5. Ajouter des credentials DockerHub dans Jenkins, par exemple avec l'identifiant `dockerhub-credentials`.
+6. Definir les variables Jenkins suivantes :
 
 ```text
-DEPLOY_HOST=CHANGE_ME
-DEPLOY_USER=CHANGE_ME
+DEPLOY_HOST=localhost
+DEPLOY_USER=ubuntu
 DEPLOY_PATH=/opt/tp-devops-landing
-SSH_CREDENTIALS_ID=vpn-ssh-key
+SSH_CREDENTIALS_ID=vpn-local-ssh
+DOCKERHUB_IMAGE=your-dockerhub-user/tp-devops-landing
+DOCKERHUB_CREDENTIALS_ID=dockerhub-credentials
 ```
 
-6. Activer l'option Jenkins :
+7. Activer l'option Jenkins :
 
 ```text
 GitHub hook trigger for GITScm polling
 ```
 
-7. Dans GitHub, creer un webhook vers :
+8. Dans GitHub, creer un webhook vers :
 
 ```text
 https://MON_JENKINS_URL/github-webhook/
@@ -170,17 +212,28 @@ Ensuite, depuis Jenkins, la pipeline :
 - verifie les fichiers obligatoires ;
 - construit l'image Docker ;
 - controle que le titre HTML attendu est present ;
+- publie l'image sur DockerHub ;
 - synchronise le projet vers le serveur VPN ;
 - execute `deploy/deploy.sh` sur le serveur ;
-- lance `docker compose up -d --build`.
+- pull l'image DockerHub publiee ;
+- lance `docker compose up -d`.
 
 Le script `deploy/deploy.sh` ne supprime aucun autre conteneur, volume ou reseau Docker. Il se limite au projet courant.
+
+Pour tester manuellement le deploiement avec une image DockerHub :
+
+```bash
+cd /opt/tp-devops-landing
+DOCKER_IMAGE=your-dockerhub-user/tp-devops-landing:latest \
+DEPLOY_PATH=/opt/tp-devops-landing \
+./deploy/deploy.sh
+```
 
 ## Securite
 
 - Ne pas versionner le fichier `.env`.
 - Ne jamais stocker de mot de passe, cle privee SSH ou token dans GitHub.
-- Utiliser Jenkins Credentials pour les acces SSH.
+- Utiliser Jenkins Credentials pour les acces SSH et DockerHub.
 - Limiter les ports exposes sur le VPN.
 - Choisir un port `APP_PORT` qui n'est pas deja utilise par un autre service.
 - Garder Jenkins et Docker a jour.
@@ -191,4 +244,4 @@ Le script `deploy/deploy.sh` ne supprime aucun autre conteneur, volume ou reseau
 - Ajouter des tests plus complets sur le HTML et les assets.
 - Ajouter un scan de l'image Docker.
 - Ajouter du monitoring ou une verification de sante HTTP.
-- Publier l'image dans un registre Docker prive ou GitHub Container Registry.
+- Publier aussi l'image dans un registre prive ou GitHub Container Registry.
