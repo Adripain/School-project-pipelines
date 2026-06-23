@@ -11,6 +11,18 @@ services:
     networks:
       - devops
 
+  tp-devops-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: ${API_DOCKER_IMAGE:-tp-devops-api:latest}
+    container_name: tp-devops-api
+    ports:
+      - "${API_PORT:-8086}:3000"
+    restart: unless-stopped
+    networks:
+      - devops
+
 networks:
   devops:
     external: true

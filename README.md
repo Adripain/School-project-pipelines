@@ -1,8 +1,8 @@
-# TP DevOps - Landing Page
+# TP DevOps - Landing Page et API NodeJS
 
-Landing page statique simple pour un TP DevOps. Le site est ecrit en HTML, CSS et JavaScript vanilla, servi par Nginx dans Docker, publie sur DockerHub, puis deploye sur un serveur VPN avec Jenkins et Docker Compose.
+Projet simple pour un TP DevOps. Il contient une landing page statique ecrite en HTML, CSS et JavaScript vanilla, ainsi qu'une API NodeJS minimale. Les deux services sont dockerises, publies sur DockerHub, puis deployes sur un serveur VPN avec Jenkins et Docker Compose.
 
-Le projet evite volontairement la sur-ingenierie : pas de framework, pas de base de donnees, pas de dependance front-end.
+Le projet evite volontairement la sur-ingenierie : pas de framework front-end, pas de base de donnees, et une API NodeJS sans dependance externe.
 
 Pour la consigne Azure, la VM Ubuntu Azure est remplacee par un VPS Ubuntu personnel faute de credits Azure disponibles. Les etapes techniques restent equivalentes : serveur Linux, port applicatif ouvert, Docker, Docker Compose, Jenkins, image DockerHub et deploiement automatise.
 
@@ -19,6 +19,11 @@ Pour la consigne Azure, la VM Ubuntu Azure est remplacee par un VPS Ubuntu perso
 ├── .dockerignore
 ├── .gitignore
 ├── README.md
+├── api/
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── server.js
+│   └── test.js
 ├── deploy/
 │   └── deploy.sh
 └── .env.example
@@ -47,16 +52,19 @@ docker network create devops
 docker compose up -d --build
 ```
 
-URL locale attendue :
+URLs locales attendues :
 
 ```text
-http://localhost:8085
+Landing page : http://localhost:8085
+API NodeJS   : http://localhost:8086
+Healthcheck  : http://localhost:8086/health
 ```
 
-Si le port `8085` est deja utilise, modifier `APP_PORT` dans `.env`, par exemple :
+Si le port `8085` ou `8086` est deja utilise, modifier `APP_PORT` ou `API_PORT` dans `.env`, par exemple :
 
 ```env
 APP_PORT=8090
+API_PORT=8091
 ```
 
 ## Commandes utiles
@@ -93,7 +101,9 @@ Le fichier `.env.example` contient les valeurs d'exemple :
 
 ```env
 APP_PORT=8085
+API_PORT=8086
 DOCKER_IMAGE=your-dockerhub-user/tp-devops-landing:latest
+API_DOCKER_IMAGE=your-dockerhub-user/tp-devops-api:latest
 DEPLOY_PATH=/opt/tp-devops-landing
 DEPLOY_HOST=CHANGE_ME
 DEPLOY_USER=CHANGE_ME
@@ -113,21 +123,24 @@ Si le port `80` est disponible sur le serveur, il est possible de modifier `APP_
 APP_PORT=80
 ```
 
-Si un autre service utilise deja le port `80`, conserver un port dedie comme `8085`.
+Si un autre service utilise deja le port `80`, conserver un port dedie comme `8085`. L'API utilise un port separe, par defaut `8086`.
 
 ## DockerHub
 
-La pipeline construit deux tags :
+La pipeline construit deux tags pour chaque image :
 
 ```text
 DOCKERHUB_IMAGE:BUILD_NUMBER
 DOCKERHUB_IMAGE:latest
+DOCKERHUB_API_IMAGE:BUILD_NUMBER
+DOCKERHUB_API_IMAGE:latest
 ```
 
 Exemple de valeur Jenkins pour l'image :
 
 ```text
 DOCKERHUB_IMAGE=your-dockerhub-user/tp-devops-landing
+DOCKERHUB_API_IMAGE=your-dockerhub-user/tp-devops-api
 ```
 
 Dans Jenkins, creer aussi un credential DockerHub de type `Username with password`.
@@ -157,6 +170,7 @@ DEPLOY_USER=ubuntu
 DEPLOY_PATH=/opt/tp-devops-landing
 SSH_CREDENTIALS_ID=vpn-local-ssh
 DOCKERHUB_IMAGE=your-dockerhub-user/tp-devops-landing
+DOCKERHUB_API_IMAGE=your-dockerhub-user/tp-devops-api
 DOCKERHUB_CREDENTIALS_ID=dockerhub-credentials
 ```
 
@@ -210,12 +224,12 @@ Ensuite, depuis Jenkins, la pipeline :
 
 - recupere le code depuis GitHub ;
 - verifie les fichiers obligatoires ;
-- construit l'image Docker ;
-- controle que le titre HTML attendu est present ;
-- publie l'image sur DockerHub ;
+- construit les images Docker de la landing page et de l'API NodeJS ;
+- controle que le titre HTML et les endpoints API attendus sont presents ;
+- publie les deux images sur DockerHub ;
 - synchronise le projet vers le serveur VPN ;
 - execute `deploy/deploy.sh` sur le serveur ;
-- pull l'image DockerHub publiee ;
+- pull les images DockerHub publiees ;
 - lance `docker compose up -d`.
 
 Le script `deploy/deploy.sh` ne supprime aucun autre conteneur, volume ou reseau Docker. Il se limite au projet courant.
@@ -225,8 +239,18 @@ Pour tester manuellement le deploiement avec une image DockerHub :
 ```bash
 cd /opt/tp-devops-landing
 DOCKER_IMAGE=your-dockerhub-user/tp-devops-landing:latest \
+API_DOCKER_IMAGE=your-dockerhub-user/tp-devops-api:latest \
 DEPLOY_PATH=/opt/tp-devops-landing \
 ./deploy/deploy.sh
+```
+
+Verification apres deploiement :
+
+```bash
+curl -I http://localhost:8085
+curl -s http://localhost:8085 | grep "TP DevOps - Landing Page"
+curl -s http://localhost:8086/health
+docker compose ps
 ```
 
 ## Securite
@@ -235,7 +259,7 @@ DEPLOY_PATH=/opt/tp-devops-landing \
 - Ne jamais stocker de mot de passe, cle privee SSH ou token dans GitHub.
 - Utiliser Jenkins Credentials pour les acces SSH et DockerHub.
 - Limiter les ports exposes sur le VPN.
-- Choisir un port `APP_PORT` qui n'est pas deja utilise par un autre service.
+- Choisir des ports `APP_PORT` et `API_PORT` qui ne sont pas deja utilises par un autre service.
 - Garder Jenkins et Docker a jour.
 
 ## Ameliorations possibles
